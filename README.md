@@ -70,10 +70,6 @@ The application follows a microservices-inspired architecture while maintaining 
   - Separate tracking for API calls, content analysis, and model training
   - Per-project usage monitoring
   - Daily aggregation for trend analysis
-- **Real-time Updates**:
-  - Immediate usage reflection in dashboard
-  - Credit deduction system
-  - Usage alerts (planned feature)
 
 ### 4. Database Design
 - **Schema Design**:
@@ -89,7 +85,6 @@ The application follows a microservices-inspired architecture while maintaining 
 - **Component Structure**:
   - Modular, reusable components
   - Separation of concerns between UI and business logic
-  - Responsive design for all screen sizes
 - **State Management**:
   - Centralized Redux store for global state
   - Local state for component-specific data
@@ -165,7 +160,7 @@ pnpm dev
 ## Special Considerations
 
 ### Security
-- All sensitive data is handled server-side
+- All sensitive data is handled server-side (stripe payments)
 - Stripe webhook verification implemented
 - CORS properly configured
 

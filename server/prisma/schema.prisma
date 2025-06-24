@@ -18,56 +18,50 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   name          String?
-  password      String?
-  authMethod    AuthMethod
+  password      String
+  authMethod    String    @default("EMAIL") // EMAIL or GOOGLE
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  subscription  Subscription?
-  projects      Project[]
-  usage         Usage[]
+  stripeData    StripeCustomer?
 }
 
-model Subscription {
-  id        String    @id @default(cuid())
-  userId    String    @unique
-  user      User      @relation(fields: [userId], references: [id])
-  planId    String
-  plan      Plan      @relation(fields: [planId], references: [id])
-  status    SubscriptionStatus
-  startDate DateTime
-  endDate   DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
+model StripeCustomer {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId    String    @unique
+  subscriptionId      String?   @unique
+  subscriptionStatus  String?   // active, canceled, or past_due
+  planId             String?
+  trialEndsAt        DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
-model Plan {
-  id            String    @id @default(cuid())
-  name          String    @unique
-  price         Float
-  credits       Int
-  subscriptions Subscription[]
+  @@index([userId])
 }
 
 model Project {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  usage     Usage[]
+  id          String    @id @default(cuid())
+  name        String
+  userId      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  usage       Usage[]
 
   @@index([userId])
 }
 
 model Usage {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  projectId String?
-  project   Project? @relation(fields: [projectId], references: [id])
-  credits   Int
-  date      DateTime @default(now())
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  credits     Int       @default(0)
+  type        String    // API_CALL, CONTENT_ANALYSIS, etc.
+  metadata    Json?     // Additional usage data
+  createdAt   DateTime  @default(now())
+
+  @@index([projectId])
+  @@index([createdAt])
 }
 
 enum AuthMethod {

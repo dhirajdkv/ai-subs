@@ -1,18 +1,46 @@
-# AI Subscription Management System - Frontend
+# AI Subs Client
 
-The frontend application for the AI Subscription Management System, built with React, TypeScript, and Vite.
+The frontend application for AI Subs, built with React, TypeScript, and Vite.
 
 ## Tech Stack
 
-- React 18
-- TypeScript
-- Vite
-- Tailwind CSS
-- React Router DOM
-- Redux Toolkit (for state management)
-- Axios (for API calls)
-- Google OAuth
-- Recharts (for usage charts)
+- **React 18** - UI Framework
+- **TypeScript** - Type Safety
+- **Vite** - Build Tool
+- **Redux Toolkit** - State Management
+- **TailwindCSS** - Styling
+- **Axios** - API Client
+- **React Router** - Routing
+- **Chart.js** - Usage Analytics Visualization
+
+## Project Structure
+
+```
+src/
+├── assets/        # Static assets (images, icons)
+├── components/    # Reusable UI components
+│   ├── layout/    # Layout components
+│   └── ui/        # Basic UI elements
+├── pages/         # Route components
+│   └── auth/      # Authentication pages
+├── services/      # API services
+├── store/         # Redux store configuration
+│   └── slices/    # Redux slices
+└── styles/        # Global styles
+```
+
+## Environment Variables
+
+Create a `.env` file in the client directory with the following variables:
+
+```env
+VITE_API_URL=http://localhost:3001/api
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+VITE_FREE_PLAN_PRICE_ID=price_xxx
+VITE_PRO_PLAN_PRICE_ID=price_xxx
+VITE_BUSINESS_PLAN_PRICE_ID=price_xxx
+```
 
 ## Getting Started
 
@@ -21,105 +49,63 @@ The frontend application for the AI Subscription Management System, built with R
 pnpm install
 ```
 
-2. Set up environment variables:
-Create a `.env` file in the client directory:
-```env
-VITE_GOOGLE_CLIENT_ID="your-google-client-id"
-```
-
-3. Start the development server:
+2. Start development server:
 ```bash
 pnpm dev
 ```
 
-The application will be available at http://localhost:5173
-
-## Project Structure
-
-```
-src/
-├── assets/          # Static assets (images, icons)
-├── components/      # Reusable React components
-│   ├── layout/     # Layout components
-│   └── ui/         # UI components
-├── pages/          # Page components
-│   ├── auth/       # Authentication pages
-│   └── dashboard/  # Dashboard pages
-├── services/       # API services
-├── store/          # Redux store configuration
-│   └── slices/     # Redux slices
-├── styles/         # Global styles
-└── utils/          # Utility functions
+3. Build for production:
+```bash
+pnpm build
 ```
 
 ## Features
 
-### Authentication
-- Email/Password login
-- Google OAuth integration
-- Protected routes
-- Persistent sessions
+- **Authentication**
+  - Email/Password Login
+  - Google OAuth Integration
+  - Protected Routes
 
-### Dashboard
-- Usage statistics chart
-- Subscription plan management
-- User profile
-- Credit tracking
+- **Dashboard**
+  - Usage Statistics
+  - Project Management
+  - Interactive Charts
 
-### Components
-- Responsive layout
-- Dark theme
-- Loading states
-- Error handling
-- Form validation
+- **Subscription Management**
+  - Plan Selection
+  - Stripe Integration
+  - Usage Tracking
 
-## Development
+## Development Guidelines
 
-### Available Scripts
+- Use TypeScript for all new components and functions
+- Follow the existing folder structure
+- Use TailwindCSS for styling
+- Implement responsive design for all components
+- Add JSDoc comments for complex functions and components
+- Use Redux for global state management
+- Keep components small and focused
+- Use React Router for navigation
+
+## Available Scripts
 
 - `pnpm dev` - Start development server
 - `pnpm build` - Build for production
 - `pnpm preview` - Preview production build
 - `pnpm lint` - Run ESLint
-- `pnpm test` - Run tests
-
-### Adding New Features
-
-1. Create new components in `src/components`
-2. Add new pages in `src/pages`
-3. Update routing in `App.tsx`
-4. Add new API services in `src/services`
-5. Add new state management in `src/store/slices`
-
-### Code Style
-
-- Use TypeScript for type safety
-- Follow ESLint configuration
-- Use Tailwind CSS for styling
-- Follow component-based architecture
-- Implement proper error handling
-- Add loading states for async operations
-
-## Testing
-
-```bash
-pnpm test
-```
-
-## Building for Production
-
-```bash
-pnpm build
-```
-
-The build artifacts will be stored in the `dist/` directory.
+- `pnpm type-check` - Run TypeScript type checking
 
 ## Contributing
 
 1. Create a feature branch
 2. Make your changes
-3. Submit a pull request
+3. Run tests and linting
+4. Submit a pull request
 
-## License
+## Related Documentation
 
-[MIT License](LICENSE)
+- [React Documentation](https://react.dev)
+- [Vite Documentation](https://vitejs.dev)
+- [TailwindCSS Documentation](https://tailwindcss.com)
+- [Redux Toolkit Documentation](https://redux-toolkit.js.org)
+- [Stripe Documentation](https://stripe.com/docs)

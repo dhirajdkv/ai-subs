@@ -1,17 +1,61 @@
-# AI Subscription Management System - Backend
+# AI Subs Server
 
-The backend server for the AI Subscription Management System, built with Node.js, Express, and Prisma.
+The backend API server for AI Subs, built with Node.js, Express, and TypeScript.
 
 ## Tech Stack
 
-- Node.js
-- TypeScript
-- Express
-- Prisma (ORM)
-- PostgreSQL
-- JWT Authentication
-- Google OAuth
-- bcrypt (for password hashing)
+- **Node.js** - Runtime Environment
+- **Express** - Web Framework
+- **TypeScript** - Type Safety
+- **Prisma** - ORM & Database Management
+- **PostgreSQL** - Database
+- **JWT** - Authentication
+- **Stripe** - Payment Processing
+- **Google OAuth** - Social Authentication
+
+## Project Structure
+
+```
+src/
+├── api/           # API routes and controllers
+│   ├── auth/      # Authentication endpoints
+│   ├── projects/  # Project management
+│   ├── usage/     # Usage tracking
+│   └── users/     # User management
+├── middleware/    # Express middleware
+├── services/      # Business logic
+├── utils/         # Utility functions
+└── index.ts       # Application entry point
+
+prisma/
+├── migrations/    # Database migrations
+└── schema.prisma  # Database schema
+```
+
+## Environment Variables
+
+Create a `.env` file in the server directory with the following variables:
+
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/ai_subs"
+
+# Authentication
+JWT_SECRET=your_jwt_secret
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Stripe Configuration
+STRIPE_SECRET_KEY=your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+FREE_PLAN_PRICE_ID=price_xxx
+PRO_PLAN_PRICE_ID=price_xxx
+BUSINESS_PLAN_PRICE_ID=price_xxx
+
+# Server Configuration
+PORT=3001
+NODE_ENV=development
+```
 
 ## Getting Started
 
@@ -20,184 +64,107 @@ The backend server for the AI Subscription Management System, built with Node.js
 pnpm install
 ```
 
-2. Set up environment variables:
-Create a `.env` file in the server directory:
-```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ai_subs"
-JWT_SECRET="your-jwt-secret"
-GOOGLE_CLIENT_ID="your-google-client-id"
-```
-
-3. Initialize the database:
+2. Set up the database:
 ```bash
-# Run migrations
-npx prisma migrate dev
-
-# Generate Prisma Client
-npx prisma generate
+# Create database and apply migrations
+pnpm prisma migrate dev
 ```
 
-4. Start the development server:
+3. Start development server:
 ```bash
 pnpm dev
-```
-
-The server will be available at http://localhost:3001
-
-## Database Management
-
-### Prisma Studio
-To view and manage your database through a GUI:
-```bash
-npx prisma studio
-```
-This will start Prisma Studio at http://localhost:5555, where you can:
-- Browse all tables
-- View relationships
-- Add, edit, or delete records
-- Filter and sort data
-- Export data
-
-### Database Migrations
-When you modify the schema (`prisma/schema.prisma`):
-```bash
-# Create a new migration
-npx prisma migrate dev --name your_migration_name
-
-# Apply migrations to production
-npx prisma migrate deploy
-```
-
-### Seeding Data
-To seed initial data (like default plans):
-```bash
-npx prisma db seed
-```
-
-## Project Structure
-
-```
-src/
-├── api/              # API routes and controllers
-│   ├── auth/        # Authentication endpoints
-│   ├── plans/       # Subscription plans
-│   ├── subscriptions/
-│   ├── usage/
-│   └── users/
-├── config/          # Configuration files
-├── middleware/      # Express middleware
-├── services/        # Business logic
-├── utils/           # Utility functions
-└── index.ts         # Application entry point
-
-prisma/
-├── migrations/      # Database migrations
-└── schema.prisma    # Database schema
 ```
 
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/signup` - Create new user
-- `POST /api/auth/login` - Login user
+- `POST /api/auth/signup` - Create new account
+- `POST /api/auth/login` - Email/password login
 - `POST /api/auth/google` - Google OAuth login
-
-### Plans
-- `GET /api/plans` - List all plans
-- `GET /api/plans/:id` - Get plan details
-
-### Subscriptions
-- `GET /api/subscriptions/current` - Get current subscription
-- `POST /api/subscriptions/change` - Change subscription plan
-
-### Usage
-- `GET /api/usage` - Get usage statistics
-- `POST /api/usage/log` - Log usage event
 
 ### Users
 - `GET /api/users/me` - Get current user
 - `PUT /api/users/me` - Update user profile
 
-## Development
+### Projects
+- `GET /api/projects` - List all projects
+- `POST /api/projects` - Create new project
+- `GET /api/projects/:id` - Get project details
+- `PUT /api/projects/:id` - Update project
+- `DELETE /api/projects/:id` - Delete project
 
-### Available Scripts
+### Usage
+- `GET /api/usage` - Get usage statistics
+- `POST /api/usage/track` - Track new usage
+
+### Subscriptions
+- `GET /api/subscriptions` - Get subscription details
+- `POST /api/subscriptions/checkout` - Create checkout session
+- `POST /api/subscriptions/change` - Change subscription
+- `POST /api/subscriptions/cancel` - Cancel subscription
+
+## Database Schema
+
+The application uses PostgreSQL with Prisma ORM. Key models include:
+
+- `User` - User accounts and profiles
+- `Project` - Unity projects
+- `Usage` - Usage tracking records
+- `Subscription` - Subscription management
+
+## Development Guidelines
+
+- Use TypeScript for all new code
+- Follow RESTful API design principles
+- Implement proper error handling
+- Add input validation for all endpoints
+- Write comprehensive API documentation
+- Use environment variables for configuration
+- Keep services modular and focused
+- Add logging for important operations
+
+## Available Scripts
 
 - `pnpm dev` - Start development server
 - `pnpm build` - Build for production
 - `pnpm start` - Start production server
-- `pnpm test` - Run tests
 - `pnpm lint` - Run ESLint
+- `pnpm type-check` - Run TypeScript type checking
+- `pnpm prisma:generate` - Generate Prisma client
+- `pnpm prisma:migrate` - Run database migrations
 
-### Database Operations
+## Error Handling
 
-```bash
-# Create new migration
-npx prisma migrate dev
+The API uses standardized error responses:
 
-# Reset database
-npx prisma migrate reset
-
-# Update client after schema changes
-npx prisma generate
-
-# View database GUI
-npx prisma studio
+```typescript
+{
+  error: {
+    message: string;
+    code: string;
+    details?: any;
+  }
+}
 ```
 
-### Adding New Features
-
-1. Update schema in `prisma/schema.prisma`
-2. Create migration
-3. Add service in `src/services`
-4. Create controller in `src/api`
-5. Add route in `src/api/routes`
-6. Update types if necessary
-
-### Error Handling
-
-The application uses a centralized error handling system:
-- Custom error classes in `src/utils/errors`
-- Error middleware for consistent error responses
-- Proper HTTP status codes
-- Detailed error messages in development
-
-## Testing
-
-```bash
-# Run all tests
-pnpm test
-
-# Run specific test file
-pnpm test path/to/test
-
-# Run with coverage
-pnpm test:coverage
-```
-
-## Production Deployment
-
-1. Build the application:
-```bash
-pnpm build
-```
-
-2. Apply database migrations:
-```bash
-npx prisma migrate deploy
-```
-
-3. Start the server:
-```bash
-pnpm start
-```
+Common error codes:
+- `UNAUTHORIZED` - Authentication required
+- `FORBIDDEN` - Insufficient permissions
+- `NOT_FOUND` - Resource not found
+- `VALIDATION_ERROR` - Invalid input
+- `INTERNAL_ERROR` - Server error
 
 ## Contributing
 
 1. Create a feature branch
 2. Make your changes
-3. Run tests
+3. Run tests and linting
 4. Submit a pull request
 
-## License
+## Related Documentation
 
-[MIT License](LICENSE) 
+- [Express Documentation](https://expressjs.com)
+- [Prisma Documentation](https://www.prisma.io/docs)
+- [JWT Documentation](https://jwt.io)
+- [Stripe API Documentation](https://stripe.com/docs/api)
+- [Google OAuth Documentation](https://developers.google.com/identity/protocols/oauth2) 

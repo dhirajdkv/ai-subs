@@ -1,18 +1,56 @@
-import { OAuth2Client } from 'google-auth-library';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma';
-import { AuthMethod, SubscriptionStatus } from '../generated/prisma';
+import { stripeService } from './stripe.service';
+import { OAuth2Client, TokenPayload } from 'google-auth-library';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET is not defined');
+}
+
+if (!process.env.STRIPE_FREE_PLAN_PRICE_ID) {
+  throw new Error('STRIPE_FREE_PLAN_PRICE_ID is not defined');
+}
+
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
+/**
+ * Interface representing the standardized user response
+ * @property id - Unique identifier of the user
+ * @property email - User's email address
+ * @property name - User's display name (optional)
+ * @property stripeData - User's subscription information (optional)
+ * @property stripeData.subscriptionStatus - Current status of the user's subscription
+ * @property stripeData.planId - ID of the user's current subscription plan
+ */
+interface UserResponse {
+  id: string;
+  email: string;
+  name: string | null;
+  stripeData?: {
+    subscriptionStatus: string | null;
+    planId: string | null;
+  } | null;
+}
+
 class AuthService {
-  async signup({ email, password, name, googleToken }: { email: string; password?: string; name?: string; googleToken?: string }) {
+  /**
+   * Creates a new user account with email/password authentication
+   * @param email - User's email address
+   * @param password - User's password (will be hashed)
+   * @param name - Optional user's display name
+   * @returns Promise containing user data and JWT token
+   * @throws Error if user already exists or signup process fails
+   * @description 
+   * 1. Creates user account
+   * 2. Creates Stripe customer
+   * 3. Sets up free subscription plan
+   * 4. Generates JWT token
+   */
+  async signup(email: string, password: string, name?: string) {
     try {
-      // Check if user already exists
+      // Check if user exists
       const existingUser = await prisma.user.findUnique({
         where: { email },
       });
@@ -21,136 +59,250 @@ class AuthService {
         throw new Error('User already exists');
       }
 
-      // Get the free plan
-      const freePlan = await prisma.plan.findUnique({
-        where: { name: 'Free' },
-      });
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-      if (!freePlan) {
-        throw new Error('Free plan not found. Please contact support.');
-      }
-
-      let userData: {
-        email: string;
-        name: string;
-        password?: string;
-        authMethod: AuthMethod;
-      } = {
-        email,
-        name: name || email.split('@')[0],
-        authMethod: AuthMethod.EMAIL,
-      };
-
-      // If using Google authentication
-      if (googleToken) {
-        const ticket = await googleClient.verifyIdToken({
-          idToken: googleToken,
-          audience: GOOGLE_CLIENT_ID,
-        });
-        const payload = ticket.getPayload();
-        if (!payload) {
-          throw new Error('Invalid Google token');
-        }
-        
-        userData.name = payload.name || userData.name;
-        userData.authMethod = AuthMethod.GOOGLE;
-      } 
-      // If using password authentication
-      else if (password) {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        userData.password = hashedPassword;
-      } else {
-        throw new Error('Either password or Google token is required');
-      }
-
-      // Create user with subscription in a transaction
-      const user = await prisma.$transaction(async (tx) => {
-        // Create the user
-        const newUser = await tx.user.create({
-          data: userData,
-        });
-
-        // Create subscription
-        await tx.subscription.create({
-          data: {
-            userId: newUser.id,
-            planId: freePlan.id,
-            status: SubscriptionStatus.ACTIVE,
-            startDate: new Date(),
-          },
-        });
-
-        return newUser;
-      });
-
-      // Generate JWT token
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
-        expiresIn: '7d',
-      });
-
-      return { token, user };
-    } catch (error) {
-      console.error('Signup error:', error);
-      throw error;
-    }
-  }
-
-  async login({ email, password, googleToken }: { email: string; password?: string; googleToken?: string }) {
-    try {
-      let user = await prisma.user.findUnique({
-        where: { email },
+      // Create user first
+      const user = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name,
+          authMethod: 'EMAIL',
+        },
         include: {
-          subscription: true,
+          stripeData: true,
         },
       });
 
-      // If using Google authentication
-      if (googleToken) {
-        const ticket = await googleClient.verifyIdToken({
-          idToken: googleToken,
-          audience: GOOGLE_CLIENT_ID,
-        });
-        const payload = ticket.getPayload();
-        if (!payload || payload.email !== email) {
-          throw new Error('Invalid Google token');
-        }
+      // FYI - Creating stripe customer and subscription for the user can be done in async manner
+      // if we want to do it in parallel to avoid blocking the main thread or to avoid stripe api failures during signup.
+      // Create Stripe customer
+      const stripeCustomer = await stripeService.createCustomer(email, name);
 
-        // If user doesn't exist, create one
-        if (!user) {
-          return this.signup({ email, googleToken });
-        }
-      } 
-      // If using password authentication
-      else if (password) {
-        if (!user || !user.password) {
-          throw new Error('Invalid credentials');
-        }
+      // Create Stripe subscription with Free plan
+      const stripeSubscription = await stripeService.createSubscription(
+        stripeCustomer.id,
+        process.env.STRIPE_FREE_PLAN_PRICE_ID as string
+      );
 
-        const isValidPassword = await bcrypt.compare(password, user.password);
-        if (!isValidPassword) {
-          throw new Error('Invalid credentials');
-        }
-      } else {
-        throw new Error('Either password or Google token is required');
+      // Create StripeCustomer record
+      await prisma.stripeCustomer.create({
+        data: {
+          userId: user.id,
+          stripeCustomerId: stripeCustomer.id,
+          subscriptionId: stripeSubscription.id,
+          subscriptionStatus: stripeSubscription.status,
+          planId: process.env.STRIPE_FREE_PLAN_PRICE_ID as string,
+        },
+      });
+
+      // Fetch user again with stripe data
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        include: {
+          stripeData: true,
+        },
+      });
+
+      if (!updatedUser) {
+        throw new Error('Failed to create user');
       }
 
       // Generate JWT token
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
-        expiresIn: '7d',
-      });
+      const token = jwt.sign(
+        { userId: updatedUser.id, email: updatedUser.email },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '24h' }
+      );
 
-      return { token, user };
+      const userResponse: UserResponse = {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        stripeData: updatedUser.stripeData ? {
+          subscriptionStatus: updatedUser.stripeData.subscriptionStatus,
+          planId: updatedUser.stripeData.planId,
+        } : null,
+      };
+
+      return {
+        user: userResponse,
+        token,
+      };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Error in signup:', error);
       throw error;
     }
   }
 
-  verifyToken(token: string): { userId: string } {
+  /**
+   * Authenticates user with email and password
+   * @param email - User's email address
+   * @param password - User's password
+   * @returns Promise containing user data and JWT token
+   * @throws Error if credentials are invalid
+   * @description
+   * 1. Verifies user exists
+   * 2. Validates password
+   * 3. Generates new JWT token
+   * 4. Returns user data with subscription info
+   */
+  async login(email: string, password: string) {
     try {
-      return jwt.verify(token, JWT_SECRET) as { userId: string };
+      // Find user with stripe data
+      const user = await prisma.user.findUnique({
+        where: { email },
+        include: {
+          stripeData: true,
+        },
+      });
+
+      if (!user || !user.password) {
+        throw new Error('Invalid credentials');
+      }
+
+      // Check password
+      const validPassword = await bcrypt.compare(password, user.password);
+
+      if (!validPassword) {
+        throw new Error('Invalid credentials');
+      }
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.id, email: user.email },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '24h' }
+      );
+
+      const userResponse: UserResponse = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        stripeData: user.stripeData ? {
+          subscriptionStatus: user.stripeData.subscriptionStatus,
+          planId: user.stripeData.planId,
+        } : null,
+      };
+
+      return {
+        user: userResponse,
+        token,
+      };
     } catch (error) {
-      throw new Error('Invalid token');
+      console.error('Error in login:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Authenticates user with Google OAuth token
+   * @param googleToken - Google OAuth ID token
+   * @returns Promise containing user data and JWT token
+   * @throws Error if token is invalid or verification fails
+   * @description
+   * 1. Verifies Google token
+   * 2. Creates user if not exists
+   * 3. Creates Stripe customer and subscription for new users
+   * 4. Generates JWT token
+   * 5. Returns user data with subscription info
+   */
+  async googleLogin(googleToken: string) {
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: googleToken,
+        audience: GOOGLE_CLIENT_ID,
+      });
+
+      const payload = ticket.getPayload() as TokenPayload;
+      if (!payload || !payload.email) {
+        throw new Error('Invalid Google token');
+      }
+
+      let user = await prisma.user.findUnique({
+        where: { email: payload.email },
+        include: {
+          stripeData: true,
+        },
+      });
+
+      if (!user) {
+        // Create user first
+        const newUser = await prisma.user.create({
+          data: {
+            email: payload.email,
+            name: payload.name,
+            password: '', // Empty password for Google users
+            authMethod: 'GOOGLE',
+          },
+          include: {
+            stripeData: true,
+          },
+        });
+
+        // FYI - Creating stripe customer and subscription for the user can be done in async manner
+        // if we want to do it in parallel to avoid blocking the main thread or to avoid stripe api failures during signup.
+        // Create Stripe customer
+        const stripeCustomer = await stripeService.createCustomer(
+          payload.email,
+          payload.name
+        );
+
+        // Create Stripe subscription with Free plan
+        const stripeSubscription = await stripeService.createSubscription(
+          stripeCustomer.id,
+          process.env.STRIPE_FREE_PLAN_PRICE_ID as string
+        );
+
+        // Create StripeCustomer record
+        await prisma.stripeCustomer.create({
+          data: {
+            userId: newUser.id,
+            stripeCustomerId: stripeCustomer.id,
+            subscriptionId: stripeSubscription.id,
+            subscriptionStatus: stripeSubscription.status,
+            planId: process.env.STRIPE_FREE_PLAN_PRICE_ID as string,
+          },
+        });
+
+        // Fetch user again with stripe data
+        user = await prisma.user.findUnique({
+          where: { id: newUser.id },
+          include: {
+            stripeData: true,
+          },
+        });
+
+        if (!user) {
+          throw new Error('Failed to create user');
+        }
+      }
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.id, email: user.email },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '24h' }
+      );
+
+      const userResponse: UserResponse = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        stripeData: user.stripeData ? {
+          subscriptionStatus: user.stripeData.subscriptionStatus,
+          planId: user.stripeData.planId,
+        } : null,
+      };
+
+      return {
+        user: userResponse,
+        token,
+      };
+    } catch (error) {
+      console.error('Error in Google login:', error);
+      throw error;
     }
   }
 }

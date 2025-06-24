@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
 import { useState, useRef, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import type { RootState } from '../../store';
 import { selectUser } from '../../store/slices/authSlice';
 import beziLogo from '../../assets/bezi-logo-light.svg';
 import { logout } from '../../services/api';
@@ -79,7 +78,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </Link>
         </nav>
 
-        {/* User profile section - now fixed at bottom */}
+        {/* User profile section - fixed at bottom */}
         <div className="relative p-4 border-t border-gray-700">
           <button
             onClick={() => setShowLogoutPopup(!showLogoutPopup)}

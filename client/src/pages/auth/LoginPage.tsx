@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { GoogleLogin } from '@react-oauth/google';
 import type { CredentialResponse } from '@react-oauth/google';
-import { jwtDecode } from 'jwt-decode';
 import { login, loginWithGoogle } from '../../services/api';
 import { setToken, setUser } from '../../store/slices/authSlice';
 
@@ -34,7 +33,7 @@ const LoginPage = () => {
       if (!credentialResponse.credential) return;
       
       await loginWithGoogle(credentialResponse.credential);
-      navigate('/dashboard');
+      navigate('/');
     } catch (err) {
       setError('Failed to sign in with Google. Please try again.');
     }

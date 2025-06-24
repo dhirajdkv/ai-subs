@@ -9,9 +9,6 @@ import UsageChart from '../components/UsageChart';
 import ProjectList from '../components/ProjectList';
 import PlanSelector from '../components/PlanSelector';
 
-// TODO: define proper types for user
-type User = any;
-
 const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const dispatch = useAppDispatch();
@@ -34,22 +31,6 @@ const DashboardPage = () => {
     fetchUser();
   }, [dispatch]);
 
-  const handleSubscriptionChange = () => {
-    setLoading(true);
-    const fetchUser = async () => {
-      try {
-        const userData = await getMe();
-        dispatch(setUser(userData));
-      } catch (error) {
-        console.error('Failed to fetch user data', error);
-        dispatch(setToken(null));
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUser();
-  };
-
   if (loading) {
     return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading...</div>;
   }
@@ -60,24 +41,34 @@ const DashboardPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-white">
-            Hello, {user.name || user.email.split('@')[0]}!
+      <div className="flex flex-col space-y-8">
+        {/* Greeting */}
+        <div className="flex items-center">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">
+            Hello, {user?.name || user?.email?.split('@')[0]}!
           </h1>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-[#2B2B2B] rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Usage Overview</h2>
-            <UsageChart />
-          </div>
-          <div className="bg-[#2B2B2B] rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Subscription Plan</h2>
-            <PlanSelector />
-          </div>
+
+        {/* Subscription Plans */}
+        <div className="w-full bg-[#2B2B2B] rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-white mb-6">Subscription</h2>
+          <PlanSelector />
         </div>
-        <div className="bg-[#2B2B2B] rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Unity Projects</h2>
+
+        {/* Divider */}
+        <div className="border-t border-gray-800" />
+
+        {/* Usage Overview */}
+        <div className="w-full bg-[#2B2B2B] rounded-lg p-6">
+          <UsageChart />
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-800" />
+
+        {/* Projects List */}
+        <div className="w-full bg-[#2B2B2B] rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-white mb-6">Unity Projects</h2>
           <ProjectList />
         </div>
       </div>

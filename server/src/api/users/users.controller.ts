@@ -1,6 +1,7 @@
 import { RequestHandler } from 'express';
 import * as userService from '../../services/user.service';
 
+// Gets the user's data.
 export const getMeHandler: RequestHandler = async (req, res) => {
   try {
     const userId = (req as any).user?.id;

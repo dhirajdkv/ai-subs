@@ -20,7 +20,7 @@ const SignupPage = () => {
       navigate('/');
     } catch (error) {
       console.error('Signup failed', error);
-      // TODO: show error to user
+      // need to show error to user
     }
   };
 

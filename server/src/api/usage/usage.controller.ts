@@ -1,6 +1,7 @@
 import { RequestHandler } from 'express';
 import { usageService } from '../../services/usage.service';
 
+// Gets the usage data for the user.
 export const getUsageHandler: RequestHandler = async (req, res) => {
   try {
     const userId = (req as any).user?.id;

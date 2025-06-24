@@ -1,6 +1,7 @@
 import { RequestHandler } from 'express';
 import { projectService } from '../../services/project.service';
 
+// Gets the unity projects for the user.
 export const getProjectsHandler: RequestHandler = async (req, res) => {
   try {
     const userId = (req as any).user?.id;
@@ -18,6 +19,7 @@ export const getProjectsHandler: RequestHandler = async (req, res) => {
   }
 };
 
+// Creates a new project for the user.
 export const createProjectHandler: RequestHandler = async (req, res) => {
   try {
     const userId = (req as any).user?.id;

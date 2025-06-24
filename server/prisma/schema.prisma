@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String
+  authMethod    String    @default("EMAIL") // EMAIL or GOOGLE
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  stripeData    StripeCustomer?
+}
+
+model StripeCustomer {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId    String    @unique
+  subscriptionId      String?   @unique
+  subscriptionStatus  String?   // active, canceled, or past_due
+  planId             String?
+  trialEndsAt        DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  @@index([userId])
+}
+
+model Project {
+  id          String    @id @default(cuid())
+  name        String
+  userId      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  usage       Usage[]
+
+  @@index([userId])
+}
+
+model Usage {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  credits     Int       @default(0)
+  type        String    // API_CALL, CONTENT_ANALYSIS, etc.
+  metadata    Json?     // Additional usage data
+  createdAt   DateTime  @default(now())
+
+  @@index([projectId])
+  @@index([createdAt])
+}
+
+enum AuthMethod {
+  EMAIL
+  GOOGLE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  CANCELED
+}
